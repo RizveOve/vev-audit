@@ -1,0 +1,17 @@
+services:
+  vev-audit:
+    build: .
+    image: vev-audit:latest
+    ports:
+      - "8000:8000"
+    environment:
+      VEV_MAX_PAGES_LIMIT: "10"
+      VEV_RATE_LIMIT_SCANS: "20"
+      # VEV_CORS_ORIGINS: "https://your-site.netlify.app"
+    volumes:
+      - vev-data:/app/data
+    shm_size: "1gb"  # Chromium uses /dev/shm heavily
+    restart: unless-stopped
+
+volumes:
+  vev-data:

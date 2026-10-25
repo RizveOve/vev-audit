@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Fixture Home</title></head>
+<body>
+  <header><nav>
+    <a href="/about.html">About</a>
+    <a href="contact.html#form">Contact</a>
+    <a href="/private/secret.html">Private</a>
+    <a href="https://example.org/elsewhere">External</a>
+    <a href="mailto:hi@example.org">Email</a>
+    <a href="/brochure.pdf">Brochure</a>
+    <a href="/about.html?">About again</a>
+  </nav></header>
+  <main>
+    <h1>Welcome</h1>
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" width="40" height="40">
+    <p style="color:#aaaaaa;background:#ffffff">Low contrast text that is hard to read.</p>
+    <form><input type="text" name="email"></form>
+    <div id="dynamic"></div>
+  </main>
+  <script>document.getElementById('dynamic').innerHTML = '<button></button>';</script>
+</body>
+</html>

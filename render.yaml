@@ -1,0 +1,22 @@
+# Render Blueprint for the Vev Audit backend (API + optional dashboard).
+# Deploy: Render dashboard → New → Blueprint → select this repository.
+services:
+  - type: web
+    name: vev-audit-api
+    runtime: docker
+    plan: starter          # Chromium needs ~1 GB RAM; the free plan may run out of memory.
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: VEV_CORS_ORIGINS
+        value: https://your-site.netlify.app   # replace with your Netlify URL (only needed in "direct" mode)
+      - key: VEV_TRUST_PROXY_HEADERS
+        value: "true"                          # Render sits behind a proxy; use X-Forwarded-For for rate limits
+      - key: VEV_RATE_LIMIT_SCANS
+        value: "10"
+      - key: VEV_MAX_PAGES_LIMIT
+        value: "10"
+    disk:                  # persistent SQLite storage for scan history
+      name: vev-data
+      mountPath: /app/data
+      sizeGB: 1

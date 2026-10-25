@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vev Audit — Website accessibility scanner by Vevkraft</title>
+  <meta name="description" content="Scan rendered web pages for WCAG 2.2 accessibility issues and download branded audit reports.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/app.css">
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="#/" aria-label="Vev Audit home">
+        <img src="assets/img/favicon.svg" alt="" width="32" height="32">
+        <span class="brand-text"><span class="brand-name">Vev Audit</span><span class="brand-by">by Vevkraft</span></span>
+      </a>
+      <nav aria-label="Primary">
+        <ul class="nav-links">
+          <li><a href="#/" data-nav="home">New scan</a></li>
+          <li><a href="#/history" data-nav="history">Scan history</a></li>
+          <li><a href="#/about" data-nav="about">How it works</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <div id="view" class="container"></div>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <p>
+        <strong>Automated testing finds only some accessibility issues.</strong>
+        Vev Audit results are not a certification of WCAG 2.2 conformance; manual review by people, including
+        assistive-technology users, is always required.
+      </p>
+      <p class="muted">© <span id="year"></span> Vevkraft · Powered by axe-core and Playwright</p>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <noscript><div class="container"><p class="alert alert-error">Vev Audit needs JavaScript enabled to run scans.</p></div></noscript>
+</body>
+</html>

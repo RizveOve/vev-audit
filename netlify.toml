@@ -1,0 +1,11 @@
+# Netlify hosts the static dashboard only. The scanner (FastAPI + Playwright/Chromium)
+# needs a long-running server, so deploy the Docker image to Render, Fly.io or Railway
+# and set VEV_API_URL in Netlify → Site configuration → Environment variables.
+[build]
+  publish = "frontend"
+  command = "sh scripts/netlify-build.sh"
+
+[build.environment]
+  # proxy  = Netlify forwards /api/* to VEV_API_URL (same-origin, no CORS setup needed) — recommended
+  # direct = the browser calls VEV_API_URL itself (backend must set VEV_CORS_ORIGINS)
+  VEV_API_MODE = "proxy"

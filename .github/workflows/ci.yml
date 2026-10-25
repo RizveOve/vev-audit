@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check .
+      - run: ruff format --check .
+      - name: Check frontend JavaScript syntax
+        run: node --check frontend/assets/js/app.js
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Unit tests
+        run: pytest tests/unit -q
+      - name: Integration tests (API + real browser scans)
+        run: pytest tests/integration -q
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t vev-audit:ci .
+      - name: Smoke test container
+        run: |
+          docker run -d --name vev -p 8000:8000 --shm-size=1g vev-audit:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/api/health; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8000/api/health | grep -q '"status":"ok"'
+          curl -fsS http://127.0.0.1:8000/ | grep -q "Vev Audit"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8000/api/scans \
+            -H 'content-type: application/json' -d '{"url":"http://169.254.169.254/"}')
+          test "$code" = "422"
+      - name: Container logs
+        if: always()
+        run: docker logs vev || true

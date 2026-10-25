@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accessibility Audit — {{ r.scan.url | host }} — {{ brand }}</title>
+<style>
+  :root {
+    --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #e5e7eb; --surface: #ffffff; --wash: #f7f7fb;
+    --brand: #4f46e5; --brand-2: #7c3aed; --brand-wash: #eef2ff;
+    --critical: #d03b3b; --serious: #ec835a; --moderate: #fab219; --minor: #5b7fb8;
+    --critical-ink: #9b1c1c; --serious-ink: #9a3412; --moderate-ink: #854d0e; --minor-ink: #1e4e8c;
+    --critical-bg: #fde8e8; --serious-bg: #fdeee6; --moderate-bg: #fef5dc; --minor-bg: #e8eef8;
+    --review: #6d28d9; --review-bg: #f1ebfd;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; font-family: "Inter", "Segoe UI", Helvetica, Arial, sans-serif; color: var(--ink); background: {{ '#fff' if for_print else 'var(--wash)' }}; font-size: {{ '10.5pt' if for_print else '15px' }}; line-height: 1.55; }
+  .doc { max-width: {{ 'none' if for_print else '980px' }}; margin: 0 auto; padding: {{ '0' if for_print else '32px 20px 64px' }}; }
+  .sheet { background: var(--surface); {% if not for_print %}border: 1px solid var(--line); border-radius: 14px; padding: 36px 40px; margin-bottom: 24px;{% endif %} }
+  h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 .5em; color: var(--ink); }
+  h2 { font-size: 1.45em; padding-bottom: .35em; border-bottom: 2px solid var(--brand-wash); margin-top: 0; }
+  h3 { font-size: 1.12em; }
+  p { margin: 0 0 .8em; }
+  a { color: var(--brand); }
+  code, pre { font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace; font-size: .86em; }
+  pre { white-space: pre-wrap; word-break: break-word; background: #f3f4f6; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 4px 0 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: .93em; }
+  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: .8em; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; background: #fafafa; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .url { word-break: break-all; }
+  .muted { color: var(--muted); }
+  .small { font-size: .86em; }
+
+  /* Cover */
+  .cover { {% if for_print %}page-break-after: always; break-after: page;{% endif %} }
+  .cover-band { background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; border-radius: 14px; padding: 34px 34px 30px; margin: 22px 0 26px; }
+  .cover-band .eyebrow { text-transform: uppercase; letter-spacing: .14em; font-size: .78em; opacity: .85; margin-bottom: 10px; }
+  .cover-band h1 { color: #fff; font-size: 2.2em; margin-bottom: 6px; }
+  .cover-band .site { font-size: 1.15em; opacity: .95; word-break: break-all; }
+  .meta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 28px; margin-bottom: 22px; }
+  .meta-grid div { border-bottom: 1px solid var(--line); padding: 6px 0; }
+  .meta-grid dt { font-size: .76em; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .meta-grid dd { margin: 2px 0 0; font-weight: 600; word-break: break-all; }
+  .notice { border: 1px solid #ddd6fe; background: var(--review-bg); border-radius: 10px; padding: 12px 16px; font-size: .9em; color: #3b2a68; }
+  .notice strong { color: var(--review); }
+  .cover-foot { margin-top: 18px; display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: .85em; padding-top: 18px; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0 18px; }
+  .stat { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: #fff; }
+  .stat .label { font-size: .76em; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .stat .value { font-size: 1.8em; font-weight: 700; line-height: 1.15; }
+  .stat .hint { font-size: .78em; color: var(--muted); }
+
+  /* Severity */
+  .badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 9px; font-size: .78em; font-weight: 700; white-space: nowrap; }
+  .badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .b-critical { background: var(--critical-bg); color: var(--critical-ink); }
+  .b-serious { background: var(--serious-bg); color: var(--serious-ink); }
+  .b-moderate { background: var(--moderate-bg); color: var(--moderate-ink); }
+  .b-minor { background: var(--minor-bg); color: var(--minor-ink); }
+  .b-review { background: var(--review-bg); color: var(--review); }
+  .chip { display: inline-block; border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; font-size: .78em; color: var(--ink-2); margin: 0 4px 4px 0; text-decoration: none; background: #fff; }
+  .bars { margin: 10px 0 6px; }
+  .bar-row { display: grid; grid-template-columns: 110px 1fr 150px; gap: 12px; align-items: center; margin-bottom: 9px; }
+  .bar-track { height: 14px; background: #f3f4f6; border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 0 4px 4px 0; min-width: 2px; }
+  .f-critical { background: var(--critical); } .f-serious { background: var(--serious); } .f-moderate { background: var(--moderate); } .f-minor { background: var(--minor); }
+  .bar-val { font-variant-numeric: tabular-nums; font-size: .9em; color: var(--ink-2); }
+
+  /* Findings */
+  .issue { border: 1px solid var(--line); border-left-width: 4px; border-radius: 10px; padding: 14px 16px; margin: 0 0 14px; background: #fff; }
+  .issue-head, .fix, .node { break-inside: avoid-page; page-break-inside: avoid; }
+  .issue.i-critical { border-left-color: var(--critical); } .issue.i-serious { border-left-color: var(--serious); }
+  .issue.i-moderate { border-left-color: var(--moderate); } .issue.i-minor { border-left-color: var(--minor); }
+  .issue.i-review { border-left-color: var(--review); }
+  .issue-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 6px; }
+  .issue-head h3 { margin: 0; flex: 1 1 300px; }
+  .rule { font-family: Menlo, Consolas, monospace; font-size: .8em; color: var(--muted); }
+  .fix { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 9px 12px; margin: 8px 0; }
+  .fix strong { color: #166534; }
+  .node { border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 8px; }
+  .node .sel { font-size: .8em; color: var(--muted); word-break: break-all; }
+  .node .why { font-size: {{ '.8em' if for_print else '.86em' }}; color: var(--ink-2); white-space: pre-line; }
+  .contrast { font-size: .84em; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #d1d5db; display: inline-block; vertical-align: middle; }
+  .node-grid { display: block; }
+  .node-grid.has-shot { display: grid; grid-template-columns: {{ '42%' if for_print else 'minmax(220px, 40%)' }} 1fr; gap: 14px; align-items: start; }
+  .shot { margin: 0; }
+  .shot img { display: block; width: 100%; height: auto; max-height: {{ '62mm' if for_print else '320px' }}; object-fit: contain; object-position: left top; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+  .shot figcaption { font-size: .74em; color: var(--muted); margin-top: 3px; }
+  .lbl { font-size: .74em; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--critical-ink); margin-bottom: 2px; }
+  ul.problems { margin: 0 0 6px; padding-left: 18px; font-size: .9em; }
+  ul.problems li { margin-bottom: 2px; }
+  ul.problems.alt { font-size: .84em; color: var(--ink-2); }
+  .headline { font-weight: 700; margin: 0 0 4px; font-size: .92em; }
+  .alt-lbl { font-size: .78em; color: var(--muted); margin: 2px 0; }
+  dl.facts { margin: 6px 0; font-size: .84em; display: grid; gap: 2px; }
+  dl.facts div { display: grid; grid-template-columns: 105px 1fr; gap: 8px; }
+  dl.facts dt { color: var(--muted); font-weight: 600; }
+  dl.facts dd { margin: 0; word-break: break-word; }
+  .affects { font-size: .9em; color: var(--ink-2); margin: 0 0 6px; }
+  .page-block { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 16px; }
+  .page-block:first-of-type { border-top: 0; margin-top: 0; }
+  .overview { margin: 8px 0 10px; }
+  .overview img { display: block; width: 100%; height: auto; {{ 'max-height: 200mm; object-fit: contain; object-position: top;' if for_print else '' }} border: 1px solid var(--line); border-radius: 8px; }
+  .page-ref { font-size: .82em; color: var(--muted); margin-top: 10px; font-weight: 600; }
+  .more { font-size: .84em; color: var(--muted); font-style: italic; margin-top: 6px; }
+  .check { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; page-break-inside: avoid; break-inside: avoid-page; }
+  .check h4 { margin: 0 0 4px; font-size: 1em; display: flex; gap: 8px; align-items: center; }
+  .box { width: 13px; height: 13px; border: 1.6px solid var(--ink-2); border-radius: 3px; display: inline-block; flex: none; }
+  ol.roadmap > li { margin-bottom: 10px; }
+  .phase { font-weight: 700; color: var(--brand); }
+  .section { {% if for_print %}page-break-before: always;{% endif %} }
+  .section.flow { page-break-before: auto; margin-top: 26px; }
+  .brandline { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .brandline svg { height: 34px; width: auto; }
+  .empty { padding: 18px; text-align: center; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); }
+  {% if not for_print %}
+  @media (max-width: 720px) {
+    .stats { grid-template-columns: repeat(2, 1fr); } .meta-grid { grid-template-columns: 1fr; }
+    .node-grid.has-shot { grid-template-columns: 1fr; }
+    .bar-row { grid-template-columns: 84px 1fr; } .bar-val { grid-column: 2; } .sheet { padding: 22px 18px; }
+  }
+  {% endif %}
+  @media print { a { color: inherit; text-decoration: none; } }
+</style>
+</head>
+<body>
+{% macro element_detail(n, review=false) %}
+<div class="node">
+  <div class="node-grid{{ ' has-shot' if images.get(n.screenshot) }}">
+    {% if images.get(n.screenshot) %}
+    <figure class="shot">
+      <img src="{{ images[n.screenshot] }}" alt="Screenshot of the {{ (n.element or {}).tag or 'affected' }} element, outlined where the problem occurs">
+      <figcaption>Outlined in context on the rendered page</figcaption>
+    </figure>
+    {% endif %}
+    <div class="node-info">
+      <div class="lbl">{{ 'Why it needs review' if review else 'Exact problem' }}</div>
+      {% if n.problems %}
+      <ul class="problems">{% for m in n.problems %}<li><strong>{{ m }}</strong></li>{% endfor %}</ul>
+      {% endif %}
+      {% if n.alternatives %}
+      {% set lead = not n.problems %}
+      {% set rest = n.alternatives[1:] if lead else n.alternatives %}
+      {% if lead %}<p class="headline">{{ n.alternatives[0] }}</p>{% endif %}
+      {% if rest %}
+      <div class="alt-lbl">{{ 'Also checked:' if review else ('Also missing (any one of these would fix it):' if lead else 'None of these accepted alternatives is present:') }}</div>
+      <ul class="problems alt">{% for m in rest %}<li>{{ m }}</li>{% endfor %}</ul>
+      {% endif %}
+      {% endif %}
+      {% if not n.problems and not n.alternatives %}
+        {% if n.messages %}<ul class="problems">{% for m in n.messages %}<li>{{ m }}</li>{% endfor %}</ul>
+        {% elif n.failure_summary %}<div class="why">{{ n.failure_summary }}</div>{% endif %}
+      {% endif %}
+      {% if n.contrast and n.contrast.foreground and n.contrast.background %}
+      <div class="contrast">
+        <span class="swatch" style="background: {{ n.contrast.foreground }}"></span>{{ n.contrast.foreground }} text on
+        <span class="swatch" style="background: {{ n.contrast.background }}"></span>{{ n.contrast.background }} —
+        measured <strong>{{ n.contrast.ratio }}:1</strong>, required {{ n.contrast.expected }}{% if n.contrast.font_size %} ({{ n.contrast.font_size }}{% if n.contrast.font_weight %}, weight {{ n.contrast.font_weight }}{% endif %}){% endif %}
+      </div>
+      {% endif %}
+      <dl class="facts">
+        {% if n.element %}
+        <div><dt>Element</dt><dd><code>&lt;{{ n.element.tag }}&gt;</code>{% if n.element.text %} “{{ n.element.text }}”{% endif %}</dd></div>
+        {% if n.element.page_level %}
+        <div><dt>Scope</dt><dd>Applies to the whole page</dd></div>
+        {% elif n.element.visible %}
+        <div><dt>Size / position</dt><dd>{{ n.element.width }}×{{ n.element.height }} px at x {{ n.element.x }}, y {{ n.element.y }}</dd></div>
+        {% else %}
+        <div><dt>Visibility</dt><dd>Not visible on screen (hidden, zero-size or off-canvas)</dd></div>
+        {% endif %}
+        {% endif %}
+        <div><dt>Selector</dt><dd><code>{{ n.target }}</code></dd></div>
+      </dl>
+      <pre>{{ n.html }}</pre>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+{% set host = r.scan.url | host %}
+{% set total_issues = s.violation_issues %}
+{% set max_elems = [s.elements_by_impact.values() | max, 1] | max %}
+<div class="doc">
+
+<!-- ============ COVER ============ -->
+<section class="sheet cover" aria-label="Report cover">
+  <div class="brandline">
+    <div>{{ logo }}</div>
+    <div class="muted small">Vev Audit · Accessibility report</div>
+  </div>
+  <div class="cover-band">
+    <div class="eyebrow">Automated accessibility audit · WCAG 2.2 A/AA</div>
+    <h1>Accessibility Audit Report</h1>
+    <div class="site">{{ host }}</div>
+  </div>
+  <dl class="meta-grid">
+    <div><dt>Audited site</dt><dd class="url">{{ r.scan.url }}</dd></div>
+    <div><dt>Scan date</dt><dd>{{ (r.scan.finished_at or r.scan.created_at) | date }}</dd></div>
+    <div><dt>Pages scanned</dt><dd>{{ s.pages_scanned }}{% if s.pages_failed %} <span class="muted">({{ s.pages_failed }} could not be loaded)</span>{% endif %}</dd></div>
+    <div><dt>Standard</dt><dd>WCAG 2.2 Level A &amp; AA (automated subset)</dd></div>
+    <div><dt>Test engine</dt><dd>{{ r.scan.engine or 'axe-core' }} · Chromium (Playwright)</dd></div>
+    <div><dt>Report ID</dt><dd>{{ r.scan.id[:12] }}</dd></div>
+  </dl>
+  <div class="stats">
+    <div class="stat"><div class="label">Issues found</div><div class="value">{{ total_issues }}</div><div class="hint">{{ s.violation_elements }} affected elements</div></div>
+    <div class="stat"><div class="label">Critical + serious</div><div class="value">{{ s.issues_by_impact.critical + s.issues_by_impact.serious }}</div><div class="hint">distinct issues</div></div>
+    <div class="stat"><div class="label">Needs review</div><div class="value">{{ s.needs_review_issues }}</div><div class="hint">manual verification</div></div>
+    <div class="stat"><div class="label">Automated score</div><div class="value">{{ s.automated_score if s.automated_score is not none else '—' }}</div><div class="hint">not a compliance rating</div></div>
+  </div>
+  <div class="notice"><strong>Important:</strong> {{ r.disclaimer }}</div>
+  <div class="cover-foot">
+    <span>Prepared by {{ brand }} · {{ brand_url | replace('https://', '') }}</span>
+    <span>Generated {{ r.generated_at | date }}</span>
+  </div>
+</section>
+
+<!-- ============ EXECUTIVE SUMMARY ============ -->
+<section class="sheet section" aria-labelledby="exec">
+  <h2 id="exec">1. Executive summary</h2>
+  {% if r.scan.status == 'failed' and not s.pages_scanned %}
+    <p>The scan could not be completed: {{ r.scan.note or 'no pages could be loaded' }}.</p>
+  {% else %}
+  <p>
+    {{ brand }} ran an automated accessibility audit of <strong>{{ s.pages_scanned }} page{{ '' if s.pages_scanned == 1 else 's' }}</strong>
+    on <strong>{{ host }}</strong> against the automatable subset of WCAG 2.2 Level A and AA, plus industry best practices.
+    {% if total_issues %}
+      The scan found <strong>{{ total_issues }} distinct issue{{ '' if total_issues == 1 else 's' }}</strong> affecting
+      <strong>{{ s.violation_elements }} element{{ '' if s.violation_elements == 1 else 's' }}</strong>,
+      of which {{ s.issues_by_impact.critical }} {{ 'is' if s.issues_by_impact.critical == 1 else 'are' }} critical
+      and {{ s.issues_by_impact.serious }} serious.
+      {% if s.wcag_criteria_failed %}These issues relate to {{ s.wcag_criteria_failed | length }} WCAG success criteri{{ 'on' if s.wcag_criteria_failed | length == 1 else 'a' }}.{% endif %}
+    {% else %}
+      No automatically detectable violations were found on the scanned pages.
+    {% endif %}
+    A further <strong>{{ s.needs_review_issues }}</strong> potential issue{{ '' if s.needs_review_issues == 1 else 's' }} could not be confirmed automatically and need manual review.
+  </p>
+  {% if not total_issues %}
+  <p>This is a good sign, but it is <strong>not evidence of WCAG conformance</strong>: most success criteria (for example keyboard operability, meaningful alternative text, captions and logical focus order) can only be assessed by a person.</p>
+  {% endif %}
+  {% if r.scan.note %}<p class="muted small">Note: {{ r.scan.note }}</p>{% endif %}
+
+  {% if r.violations %}
+  <h3>Top priorities</h3>
+  <table>
+    <thead><tr><th>Severity</th><th>Issue</th><th>WCAG</th><th class="num">Elements</th><th class="num">Pages</th></tr></thead>
+    <tbody>
+    {% for i in r.violations[:6] %}
+      <tr>
+        <td><span class="badge b-{{ i.impact }}">{{ impact_labels[i.impact] }}</span></td>
+        <td>{{ i.help }}</td>
+        <td>{% for c in i.wcag %}{{ c.id }}{{ ', ' if not loop.last }}{% else %}<span class="muted">Best practice</span>{% endfor %}</td>
+        <td class="num">{{ i.node_count }}</td>
+        <td class="num">{{ i.page_count }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% endif %}
+
+  <h3 style="margin-top:22px">Severity breakdown</h3>
+  <p class="muted small">Severity follows axe-core impact ratings: <strong>critical</strong> blocks access for some users, <strong>serious</strong> causes significant difficulty, <strong>moderate</strong> causes some difficulty, <strong>minor</strong> is an annoyance.</p>
+  <div class="bars" role="img" aria-label="Affected elements by severity: {% for imp in impacts %}{{ impact_labels[imp] }} {{ s.elements_by_impact[imp] }}{{ ', ' if not loop.last }}{% endfor %}">
+    {% for imp in impacts %}
+    <div class="bar-row">
+      <span class="badge b-{{ imp }}">{{ impact_labels[imp] }}</span>
+      <div class="bar-track"><div class="bar-fill f-{{ imp }}" style="width: {{ (s.elements_by_impact[imp] / max_elems * 100) | round(1) }}%"></div></div>
+      <span class="bar-val">{{ s.elements_by_impact[imp] }} element{{ '' if s.elements_by_impact[imp] == 1 else 's' }} · {{ s.issues_by_impact[imp] }} issue{{ '' if s.issues_by_impact[imp] == 1 else 's' }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  <table>
+    <thead><tr><th>Severity</th><th class="num">Distinct issues</th><th class="num">Affected elements</th></tr></thead>
+    <tbody>
+      {% for imp in impacts %}<tr><td>{{ impact_labels[imp] }}</td><td class="num">{{ s.issues_by_impact[imp] }}</td><td class="num">{{ s.elements_by_impact[imp] }}</td></tr>{% endfor %}
+      <tr><td><strong>Total</strong></td><td class="num"><strong>{{ s.violation_issues }}</strong></td><td class="num"><strong>{{ s.violation_elements }}</strong></td></tr>
+    </tbody>
+  </table>
+
+  {% if s.wcag_criteria_failed %}
+  <h3>WCAG 2.2 success criteria with automated failures</h3>
+  <table>
+    <thead><tr><th>Criterion</th><th>Level</th><th>Related rules</th><th class="num">Elements</th></tr></thead>
+    <tbody>
+    {% for c in s.wcag_criteria_failed %}
+      <tr><td><a href="{{ c.url }}">{{ c.id }} {{ c.name }}</a></td><td>{{ c.level }}</td><td><code>{{ c.rules | join(', ') }}</code></td><td class="num">{{ c.elements }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <div class="section flow">
+  <h3>Audited URLs</h3>
+  <table>
+    <thead><tr><th>#</th><th>Page</th><th class="num">Issues</th><th class="num">Review</th><th class="num">Score</th></tr></thead>
+    <tbody>
+    {% for p in r.pages %}
+      <tr>
+        <td class="num">{{ loop.index }}</td>
+        <td><div class="url">{{ p.final_url or p.url }}</div>{% if p.title %}<div class="muted small">{{ p.title }}</div>{% endif %}{% if p.error %}<div class="small" style="color:var(--critical-ink)">Not scanned: {{ p.error }}</div>{% endif %}</td>
+        <td class="num">{{ '—' if p.error else p.violation_rules }}</td>
+        <td class="num">{{ '—' if p.error else p.review_rules }}</td>
+        <td class="num">{{ '—' if p.score is none else p.score }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============ DETAILED FINDINGS ============ -->
+<section class="sheet section" aria-labelledby="findings">
+  <h2 id="findings">2. Detailed findings — automated violations</h2>
+  <p class="muted">Each issue below was <strong>confirmed by automated testing</strong>. Issues are ordered by severity, then by number of affected elements.{% if for_print %} Up to {{ max_nodes }} example elements are shown per page; download the JSON or HTML report for the complete list.{% endif %}</p>
+  {% for i in r.violations %}
+  <article class="issue i-{{ i.impact }}">
+    <div class="issue-head">
+      <span class="badge b-{{ i.impact }}">{{ impact_labels[i.impact] }}</span>
+      <h3>{{ loop.index }}. {{ i.help }}</h3>
+      <span class="rule">{{ i.rule_id }}</span>
+    </div>
+    <div>
+      {% for c in i.wcag %}<a class="chip" href="{{ c.url }}">WCAG {{ c.id }} {{ c.name }} ({{ c.level }})</a>{% endfor %}
+      {% if i.best_practice %}<span class="chip">Best practice (not a WCAG requirement)</span>{% endif %}
+      <span class="chip">{{ i.node_count }} element{{ '' if i.node_count == 1 else 's' }} · {{ i.page_count }} page{{ '' if i.page_count == 1 else 's' }}</span>
+    </div>
+    <p style="margin-top:6px">{{ i.description }}</p>
+    {% if i.affects %}<p class="affects"><strong>Who is affected:</strong> {{ i.affects }}</p>{% endif %}
+    <div class="fix"><strong>How to fix:</strong> {{ i.remediation }}</div>
+    {% for occ in i.occurrences %}
+      <div class="page-ref">On <span class="url">{{ occ.page_url }}</span></div>
+      {% for n in occ.nodes[:max_nodes] %}{{ element_detail(n) }}{% endfor %}
+      {% if occ.nodes | length > max_nodes %}<div class="more">…and {{ occ.nodes | length - max_nodes }} more element(s) on this page.</div>{% endif %}
+    {% endfor %}
+    {% if i.help_url %}<p class="small" style="margin:8px 0 0"><a href="{{ i.help_url }}">Rule documentation (Deque University)</a></p>{% endif %}
+  </article>
+  {% else %}
+  <div class="empty">No automated violations were detected on the scanned pages. Manual review is still required.</div>
+  {% endfor %}
+</section>
+
+<!-- ============ PAGE BY PAGE ============ -->
+<section class="sheet section" aria-labelledby="bypage">
+  <h2 id="bypage">3. Page-by-page results</h2>
+  <p class="muted">Each scanned page with its automated issues. Where available, the annotated screenshot outlines every located problem; numbers match the table below it. Whole-page issues (such as a missing language) and best-practice container issues are listed as “page-level” rather than outlined.</p>
+  {% for p in r.pages %}
+  <article class="page-block">
+    <h3>{{ loop.index }}. {{ p.title or (p.final_url or p.url) }}</h3>
+    <div class="url small muted">{{ p.final_url or p.url }}</div>
+    {% if p.error %}
+      <p class="small" style="color:var(--critical-ink)">Not scanned: {{ p.error }}</p>
+    {% else %}
+      <p class="small">{{ p.violation_rules }} issue type{{ '' if p.violation_rules == 1 else 's' }} · {{ p.review_rules }} to review · {{ p.passes }} checks passed · score {{ p.score }}</p>
+      {% if images.get(p.screenshot) %}
+      <figure class="overview">
+        <img src="{{ images[p.screenshot] }}" alt="Annotated screenshot of {{ p.title or 'the page' }} with numbered outlines around each problem">
+      </figure>
+      {% elif p.screenshot %}
+      <p class="small muted">Annotated screenshot available in the Vev Audit dashboard.</p>
+      {% endif %}
+      {% if p.legend %}
+      <table>
+        <thead><tr><th class="num">#</th><th>Severity</th><th>Issue</th><th class="num">Outlined</th><th class="num">Elements</th></tr></thead>
+        <tbody>
+        {% for l in p.legend %}
+          <tr><td class="num"><strong>{{ l.number }}</strong></td><td><span class="badge b-{{ l.impact }}">{{ impact_labels[l.impact] }}</span></td><td>{{ l.help }} <span class="rule">{{ l.rule_id }}</span></td><td class="num">{% if l.marked %}{{ l.marked }}{% else %}<span class="muted small">page-level</span>{% endif %}</td><td class="num">{{ l.total }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% elif p.issues %}
+      <table>
+        <thead><tr><th>Severity</th><th>Issue</th><th class="num">Elements</th></tr></thead>
+        <tbody>
+        {% for l in p.issues %}
+          <tr><td>{% if l.kind == 'violation' %}<span class="badge b-{{ l.impact }}">{{ impact_labels[l.impact] }}</span>{% else %}<span class="badge b-review">Review</span>{% endif %}</td><td>{{ l.help }} <span class="rule">{{ l.rule_id }}</span></td><td class="num">{{ l.node_count }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="small muted">No automated issues found on this page.</p>
+      {% endif %}
+    {% endif %}
+  </article>
+  {% endfor %}
+</section>
+
+<!-- ============ NEEDS REVIEW ============ -->
+<section class="sheet section" aria-labelledby="review">
+  <h2 id="review">4. Needs manual review</h2>
+  <p class="muted">The automated engine found these potential problems but <strong>could not determine a pass or fail</strong> (for example text over background images, or ARIA it cannot fully evaluate). A person must check each one. They are <strong>not counted</strong> as violations above.</p>
+  {% for i in r.needs_review %}
+  <article class="issue i-review">
+    <div class="issue-head">
+      <span class="badge b-review">Needs review</span>
+      <h3>{{ i.help }}</h3>
+      <span class="rule">{{ i.rule_id }}</span>
+    </div>
+    <div>{% for c in i.wcag %}<a class="chip" href="{{ c.url }}">WCAG {{ c.id }} {{ c.name }}</a>{% endfor %}<span class="chip">{{ i.node_count }} element{{ '' if i.node_count == 1 else 's' }}</span></div>
+    <p style="margin-top:6px">{{ i.description }}</p>
+    {% for occ in i.occurrences[:3] %}
+      <div class="page-ref">On <span class="url">{{ occ.page_url }}</span></div>
+      {% for n in occ.nodes[:(2 if for_print else 10)] %}{{ element_detail(n, review=true) }}{% endfor %}
+    {% endfor %}
+  </article>
+  {% else %}
+  <div class="empty">No items were flagged for review by the automated engine.</div>
+  {% endfor %}
+
+  <h3 style="margin-top:24px">Manual testing checklist</h3>
+  <p class="muted">These WCAG 2.2 requirements cannot be verified by automated tools and were <strong>not tested</strong> by this scan.</p>
+  {% for c in r.manual_checks %}
+  <div class="check">
+    <h4><span class="box" aria-hidden="true"></span>{{ c.title }}</h4>
+    <div class="small">{{ c.how }}</div>
+    <div style="margin-top:5px">{% for sc in c.criteria_detail %}<a class="chip" href="{{ sc.url }}">{{ sc.id }} {{ sc.name }}</a>{% endfor %}</div>
+  </div>
+  {% endfor %}
+</section>
+
+<!-- ============ RECOMMENDATIONS ============ -->
+<section class="sheet section" aria-labelledby="recs">
+  <h2 id="recs">5. Remediation recommendations</h2>
+  <ol class="roadmap">
+    <li><span class="phase">Phase 1 — Remove barriers (immediately).</span>
+      {% set p1 = r.violations | selectattr('impact', 'in', ['critical', 'serious']) | list %}
+      {% if p1 %}Fix the {{ p1 | length }} critical and serious issue{{ '' if p1 | length == 1 else 's' }}:
+        {% for i in p1[:8] %}<em>{{ i.help }}</em>{{ '; ' if not loop.last else '.' }}{% endfor %}
+        These prevent or seriously hinder use by people relying on screen readers, keyboards or low-vision settings.
+      {% else %}No critical or serious automated issues were found — focus on manual verification of key user journeys.{% endif %}
+    </li>
+    <li><span class="phase">Phase 2 — Improve usability (next sprint).</span>
+      {% set p2 = r.violations | selectattr('impact', 'equalto', 'moderate') | list %}
+      {% if p2 %}Address {{ p2 | length }} moderate issue{{ '' if p2 | length == 1 else 's' }}, such as {% for i in p2[:4] %}<em>{{ i.help }}</em>{{ ', ' if not loop.last else '.' }}{% endfor %}{% else %}No moderate issues were found.{% endif %}
+      Review all items in “Needs manual review”.
+    </li>
+    <li><span class="phase">Phase 3 — Polish and best practice.</span>
+      {% set p3 = r.violations | selectattr('impact', 'equalto', 'minor') | list %}
+      {% if p3 %}Resolve {{ p3 | length }} minor issue{{ '' if p3 | length == 1 else 's' }} and best-practice findings to make structure and navigation more robust.{% else %}No minor issues were found.{% endif %}
+    </li>
+    <li><span class="phase">Fix at the source.</span> Many issues repeat across pages because they come from shared templates or components (headers, footers, navigation, form components, colour tokens). Fixing the shared component resolves every instance at once.</li>
+    <li><span class="phase">Verify manually.</span> Complete the manual checklist above with keyboard-only and screen-reader testing on core journeys (navigation, search, sign-up/login, checkout or contact forms).</li>
+    <li><span class="phase">Prevent regressions.</span> Add automated accessibility checks (axe-core) to CI and design reviews, and re-run Vev Audit after each release.</li>
+    <li><span class="phase">Include people with disabilities.</span> Usability testing with assistive-technology users catches issues no automated or expert review will.</li>
+  </ol>
+
+  <h3 style="margin-top:22px">Methodology &amp; limitations</h3>
+  <p class="small">Each page was loaded in headless Chromium at a 1280×800 viewport, allowed to finish rendering (including client-side JavaScript), and analysed with {{ r.scan.engine or 'axe-core' }} using the rule tags <code>wcag2a, wcag2aa, wcag21a, wcag21aa, wcag22aa, best-practice</code>.
+  {% if r.scan.options.max_pages and r.scan.options.max_pages > 1 %}Up to {{ r.scan.options.max_pages }} same-site pages were discovered by following links from the start URL{% if r.scan.options.respect_robots %}, respecting robots.txt{% endif %}.{% endif %}
+  Results reflect the pages at the time of scanning, in their default (logged-out) state and at a single viewport size; content behind logins, interactions, other breakpoints or user preferences was not evaluated.</p>
+  <p class="small"><strong>Limitations:</strong> {{ r.disclaimer }}</p>
+  <div class="brandline" style="margin-top:26px; border-top:1px solid var(--line); padding-top:16px">
+    <div>{{ logo }}</div>
+    <div class="muted small" style="text-align:right">Vev Audit {{ r.generator.version }} · {{ brand_url | replace('https://', '') }}<br>Report {{ r.scan.id }}</div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
